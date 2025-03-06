@@ -27,7 +27,6 @@ from PyQt5.QtWidgets import (
 class Options(Enum):
     CREATE: int = 0
     EDIT: int = 1
-    VIEW: int = 2
 
 class SelectType(Enum):
     DIRECTORY = 0
@@ -54,25 +53,21 @@ class ApplicationWindow(QMainWindow):
         button_layout = QHBoxLayout()
 
         self.create_button = QPushButton("Create")
-        self.edit_button = QPushButton("Edit")
-        self.view_button = QPushButton("View")
+        self.edit_button = QPushButton("Edit / View")
         self.save_button = QPushButton()
         self.save_button.setIcon(QIcon("assets/icons/file_open.png"))
 
         self.create_button.setFixedHeight(30)
         self.edit_button.setFixedHeight(30)
-        self.view_button.setFixedHeight(30)
         self.save_button.setFixedSize(30, 30)
         self.save_mode = False
 
         self.create_button.clicked.connect(self.create_config)
         self.edit_button.clicked.connect(self.edit_config)
-        self.view_button.clicked.connect(self.view_config)
         self.save_button.clicked.connect(self.save_load_button)
 
         button_layout.addWidget(self.create_button)
         button_layout.addWidget(self.edit_button)
-        button_layout.addWidget(self.view_button)
         button_layout.addWidget(self.save_button)
 
         # Create group
@@ -116,24 +111,14 @@ class ApplicationWindow(QMainWindow):
         temp_text.setAlignment(Qt.AlignCenter)
         self.edit_layout.addWidget(temp_text)
 
-        # View group
-        self.view_group = QWidget()
-        self.view_layout = QVBoxLayout(self.view_group)
-        temp_text = QLabel("No File Loaded!")
-        temp_text.setFont(QFont("Arial", pointSize=10, weight=QFont.Bold))
-        temp_text.setAlignment(Qt.AlignCenter)
-        self.view_layout.addWidget(temp_text)
-
         self.create_group.setVisible(False)
         self.edit_group.setVisible(False)
-        self.view_group.setVisible(False)
 
         # Build main layout
         main_column_layout.addLayout(button_layout)
         main_column_layout.addWidget(QHLine())
         main_column_layout.addWidget(self.create_group)
         main_column_layout.addWidget(self.edit_group)
-        main_column_layout.addWidget(self.view_group)
         main_column_layout.addStretch()
 
         # Loaded file text
@@ -154,7 +139,6 @@ class ApplicationWindow(QMainWindow):
 
         self.select_button(Options.CREATE)
         self.setCentralWidget(central_widget)
-
 
     def create_config(self):
         self.select_button(Options.CREATE)
@@ -217,16 +201,11 @@ class ApplicationWindow(QMainWindow):
     def select_item(self, target):
         self.select_file_for(self.edit_fields[target]["entry"])
 
-    def view_config(self):
-        self.select_button(Options.VIEW)
-
     def select_button(self, button):
         self.edit_button.setStyleSheet(style.button_selected if button == Options.EDIT else style.button_normal)
-        self.view_button.setStyleSheet(style.button_selected if button == Options.VIEW else style.button_normal)
         self.create_button.setStyleSheet(style.button_selected if button == Options.CREATE else style.button_normal)
 
         self.edit_group.setVisible(True if button == Options.EDIT else False)
-        self.view_group.setVisible(True if button == Options.VIEW else False)
         self.create_group.setVisible(True if button == Options.CREATE else False)
 
     def select_file_for(self, widget, select_type=SelectType.FILE):
@@ -282,8 +261,6 @@ class ApplicationWindow(QMainWindow):
 
         shutil.copyfile("assets\\template.json", name)
         self.load_file(name)
-        self.save_button.setIcon(QIcon("assets/icons/save.png"))
-        self.save_mode = True
 
     def save_file(self):
         if not self.loaded_file or not self.loaded_data:
@@ -321,5 +298,6 @@ class ApplicationWindow(QMainWindow):
         name_start = elided_text.rfind("\\") + 1
         elided_text = elided_text[:name_start] + "<b>" + elided_text[name_start:] + "<\\b>"
         self.current_configuration.setText(elided_text)
+        self.edit_config()
         self.save_button.setIcon(QIcon("assets/icons/save.png"))
         self.save_mode = True
