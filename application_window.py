@@ -4,7 +4,7 @@ from popups import show_popup, Severity
 
 from enum import Enum
 from datetime import date
-from extra_gui import QHLine, QVLine
+from extra_gui import QHLine
 
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QIcon, QFontMetrics
@@ -43,7 +43,7 @@ class ApplicationWindow(QMainWindow):
         # Window setup
         self.setWindowTitle("LIMS Parser Configuration Tool")
         self.setWindowIcon(QIcon("assets/icons/signature.png"))
-        self.setFixedSize(QSize(1000, 600))
+        self.setFixedSize(QSize(1200, 800))
         central_widget = QWidget(self)
 
         # Layout setup
@@ -102,7 +102,7 @@ class ApplicationWindow(QMainWindow):
         scroll_content = QWidget()
         self.edit_layout = QVBoxLayout(scroll_content)
         self.edit_scroll.setWidget(scroll_content)
-        self.edit_scroll.setFixedHeight(460)
+        self.edit_scroll.setFixedHeight(660)
         self.edit_group.setLayout(QVBoxLayout())
         self.edit_group.layout().addWidget(self.edit_scroll)
 
@@ -153,50 +153,123 @@ class ApplicationWindow(QMainWindow):
             for name, value in self.loaded_data.items():
                 label = QLabel(name.replace("_", " ").title())
                 label.setFont(QFont("Arial", weight=QFont.Bold, pointSize=10))
+                layout.addWidget(label)
 
-                list = QListWidget()
-                for entry in value:
-                    list.addItem(QListWidgetItem(entry))
-                
+                # Controls
                 controls = QWidget()
                 controls_layout = QHBoxLayout(controls)
-
-                entry_field = QLineEdit()
-                entry_field.setPlaceholderText("...")
 
                 open_button = QPushButton()
                 open_button.setIcon(QIcon("assets/icons/file_open.png"))
                 open_button.clicked.connect(lambda checked, target=name: self.select_item(target))
 
+                entry_field = QLineEdit()
+                entry_field.setPlaceholderText("...")
+
                 add_button = QPushButton("+")
-                add_button.clicked.connect(lambda checked, target=name: self.add_item(target))
-
                 remove_button = QPushButton("-")
-                remove_button.clicked.connect(lambda checked, target=name: self.remove_item(target))
-
-                self.edit_fields[name] = {
-                    "list": list,
-                    "entry": entry_field,
-                    "select": open_button,
-                }
 
                 controls_layout.addWidget(open_button)
                 controls_layout.addWidget(entry_field)
                 controls_layout.addWidget(add_button)
                 controls_layout.addWidget(remove_button)
 
-                layout.addWidget(label)
-                layout.addWidget(list)
-                layout.addWidget(controls)
+                self.edit_fields[name] = {
+                    "entry": entry_field,
+                    "select": open_button,
+                }
 
-    def add_item(self, target):
-        text = self.edit_fields[target]["entry"].text()
+                if isinstance(value, dict):
+                    # Widget & layout initialization
+                    key_value_widget = QWidget()
+                    key_value_widget.setMinimumHeight(200)
+                    dict_box = QHBoxLayout(key_value_widget)
+                    dict_box.setContentsMargins(0, 0, 0, 0)
+
+                    key_widget = QWidget()
+                    key_layout = QVBoxLayout(key_widget)
+                    key_layout.setContentsMargins(0, 0, 0, 0)
+
+                    value_widget = QWidget()
+                    value_layout = QVBoxLayout(value_widget)
+                    value_layout.setContentsMargins(0, 0, 0, 0)
+
+                    # Key controls
+                    key_list = QListWidget()
+                    self.edit_fields[name]["list"] = key_list
+                    add_button.clicked.connect(lambda checked, target=name: self.add_dict_item(target))
+                    remove_button.clicked.connect(lambda checked, target=name: self.remove_dict_item(target))
+
+                    # Value controls
+                    value_list = QListWidget()
+                    value_list.itemClicked.connect(lambda item, target=name: self.load_value_text(target + "_values", item))
+                    value_entry = QLineEdit()
+                    value_entry.setPlaceholderText("...")
+                    self.edit_fields[name + "_values"] = { "list": value_list, "entry": value_entry, "last": -1 }
+
+                    value_send = QPushButton()
+                    value_send.setIcon(QIcon("assets/icons/send.png"))
+                    value_send.clicked.connect(
+                        lambda checked, target=name: self.update_value(target + "_values")
+                    )
+
+                    value_controls = QWidget()
+                    value_controls_layout = QHBoxLayout(value_controls)
+                    value_controls_layout.addWidget(value_entry)
+                    value_controls_layout.addWidget(value_send)
+
+                    # Build layout
+                    key_layout.addWidget(key_list)
+                    key_layout.addWidget(controls)
+                    value_layout.addWidget(value_list)
+                    value_layout.addWidget(value_controls)
+                    dict_box.addWidget(key_widget)
+                    dict_box.addWidget(value_widget)
+
+                    key_value_widget.setLayout(dict_box)
+                    layout.addWidget(key_value_widget)
+                elif isinstance(value, list):
+                    list_widget = QListWidget()
+                    list_widget.setMinimumHeight(200)
+                    for entry in value:
+                        list_widget.addItem(QListWidgetItem(entry))
+
+                    # Controls
+                    self.edit_fields[name]["list"] = list_widget
+                    layout.addWidget(list_widget)
+                    add_button.clicked.connect(lambda checked, target=name: self.add_item(target))
+                    remove_button.clicked.connect(lambda checked, target=name: self.remove_item(target))
+
+                    # Build layout
+                    layout.addWidget(controls)
+
+    def add_item(self, target, text=None):
+        if text is None:
+            text = self.edit_fields[target]["entry"].text()
         if text != "":
             self.edit_fields[target]["list"].addItem(QListWidgetItem(text))
+        if text is None:
             QListWidgetItem(self.edit_fields[target]["entry"].setText(""))
 
-    def remove_item(self, target):
-        self.edit_fields[target]["list"].takeItem(self.edit_fields[target]["list"].currentRow())
+    def remove_item(self, target, values=False):
+        self.edit_fields[target + "_values" if values else target]["list"].takeItem(self.edit_fields[target]["list"].currentRow())
+
+    def add_dict_item(self, target):
+        self.add_item(target)
+        self.add_item(target + "_values", "value")
+
+    def remove_dict_item(self, target):
+        self.remove_item(target, True)
+        self.remove_item(target)
+
+    def load_value_text(self, target, item):
+        self.edit_fields[target]["entry"].setText(item.text())
+
+    def update_value(self, target):
+        index = self.edit_fields[target]["list"].currentRow()
+        if index in [None, -1]:
+            return
+        self.edit_fields[target]["list"].item(index).setText(self.edit_fields[target]["entry"].text())
 
     def select_item(self, target):
         self.select_file_for(self.edit_fields[target]["entry"])

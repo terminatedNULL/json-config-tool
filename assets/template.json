@@ -1,5 +1,8 @@
 {
     "ignore_workbooks": [],
     "ignore_sheets": [],
-    "templates": []
+    "templates": [],
+    "force_workbooks": {},
+    "force_sheets": {},
+    "terms": []
 }
